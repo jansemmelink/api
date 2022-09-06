@@ -119,9 +119,11 @@ func (api *api) Run(addr string) {
 	// Block until we receive our signal.
 	<-c
 
+	log.Debugf("Stopping the server...")
 	// Create a deadline to wait for.
 	ctx, cancel := context.WithTimeout(context.Background(), wait)
 	defer cancel()
+	log.Debugf("Stopping the server...")
 
 	// Doesn't block if no connections, but will otherwise wait
 	// until the timeout deadline.
@@ -182,17 +184,19 @@ func (api *api) hdlr(fnc interface{}) http.HandlerFunc {
 			if err != nil {
 				//log full error but in response, only log the base error
 				log.Errorf("Failed: %+v\n", err)
-				for {
+				for err != nil {
+					log.Errorf("Failed: %+v\n", err)
 					if baseErr, ok := err.(errors.IError); ok {
 						if baseErr.Code() > 0 {
 							status = baseErr.Code()
-						}
-						if baseErr.Parent() != nil {
-							err = baseErr.Parent()
-						} else {
 							break
 						}
+						if baseErr.Parent() != nil && baseErr.Parent() != err {
+							err = baseErr.Parent()
+							continue
+						}
 					}
+					break
 				}
 				res = ErrorResponse{Error: fmt.Sprintf("%+s", err)}
 			}
